@@ -1,1 +1,8 @@
-Dashboard for 2,9" WeAct Studio E-paper modules with ESP-32 microcontrollers
+# Weather E-Ink Dash 🌤️
+<p align="center">
+  <img height="300" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/images/example_1.jpg">
+</p>
+
+[![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Dashboard for 2,9" WeAct Studio e-paper modules with ESP-32 microcontrollers
