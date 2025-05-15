@@ -5,4 +5,4 @@
 
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Dashboard for 2,9" WeAct Studio e-paper modules with ESP-32 microcontrollers
+Weather Dashboard for 2,9" WeAct Studio E-paper modules, with Home Assistant and OpenWeatherMap API integrations for ESP-32 microcontrollers
