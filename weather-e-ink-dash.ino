@@ -30,8 +30,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- */
-*/
+ **/
 
 // Icons and auth/config files
 #include <icons.cpp>
@@ -118,7 +117,7 @@ String resetMessageTemplate =
   "camera to the QR code aside\n"
   "and connect automatically!";
 
-/** Web server used to configure first use */
+// Web server used to configure first use
 WebServer server(80);
 bool firstBoot = false;
 
