@@ -1,6 +1,6 @@
 # Weather E-Ink Dash 🌤️
 <p align="center">
-  <img height="300" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/images/example_1.jpg">
+  <img height="300" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_1.jpg">
 </p>
 
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
