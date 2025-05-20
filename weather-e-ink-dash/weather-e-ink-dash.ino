@@ -52,14 +52,14 @@
 #include "qrcode.h"
 
 //#define USE_MOCK_API //uncomment to use a temporary mock api to avoid hit usage limit during testing
-#define OW_MOCK_API "http://172.19.33.160/weather-monitor/api-mock.json" // mock api
+#define OW_MOCK_API "api-mock.json" // mock api
 #define OW_BASE_API_URL "https://api.openweathermap.org/data/2.5/weather"
 
 // Deep Sleep configuration
 #define RUNS_PER_DAY 800
 #define SECONDS_IN_DAY 86400
 #define SLEEP_INTERVAL_SEC (SECONDS_IN_DAY / RUNS_PER_DAY)
-#define RESET_PIN 13
+#define RESET_PIN 21
 
 // Used to manage deep sleep state
 RTC_DATA_ATTR int wakeCount = 0;
