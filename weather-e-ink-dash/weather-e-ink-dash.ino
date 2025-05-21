@@ -60,6 +60,7 @@
 #define SECONDS_IN_DAY 86400
 #define SLEEP_INTERVAL_SEC (SECONDS_IN_DAY / RUNS_PER_DAY)
 #define RESET_PIN 21
+#define BATTERY_LEVEL_PIN 0
 
 // Used to manage deep sleep state
 RTC_DATA_ATTR int wakeCount = 0;
@@ -322,7 +323,6 @@ String convertTemperature(String celsius) {
   }
 }
 
-
 // Display on the screen a especific Home Assistant sensor temperature and humidity data
 void displaySensorData(const unsigned char* icon, int x, int y, String temp, String humidity){
   int separator_x = 31 + x;
@@ -398,6 +398,59 @@ DynamicJsonDocument fetchOpenWeatherData() {
   return doc;
 }
 
+// Draw the icon accordingly to the percent level
+void drawBatteryIcon(float v, int x, int y){
+  const unsigned char* ui_battery_icon_levels[11] = {
+    ui_icon_battery_0, ui_icon_battery_10,
+    ui_icon_battery_20, ui_icon_battery_30,
+    ui_icon_battery_40, ui_icon_battery_50,
+    ui_icon_battery_60, ui_icon_battery_70,
+    ui_icon_battery_80, ui_icon_battery_90,
+    ui_icon_battery_100
+  };
+  if(v >= 95){
+    display.drawBitmap(x, y, ui_battery_icon_levels[10], 16, 16, GxEPD_BLACK);
+  }else if(v > 90){
+    display.drawBitmap(x, y, ui_battery_icon_levels[9], 16, 16, GxEPD_BLACK);
+  }else if(v >= 80){
+    display.drawBitmap(x, y, ui_battery_icon_levels[8], 16, 16, GxEPD_BLACK);
+  }else if(v >= 70){
+    display.drawBitmap(x, y, ui_battery_icon_levels[7], 16, 16, GxEPD_BLACK);
+  }else if(v >= 60){
+    display.drawBitmap(x, y, ui_battery_icon_levels[6], 16, 16, GxEPD_BLACK);
+  }else if(v >= 50){
+    display.drawBitmap(x, y, ui_battery_icon_levels[5], 16, 16, GxEPD_BLACK);
+  }else if(v >= 40){
+    display.drawBitmap(x, y, ui_battery_icon_levels[4], 16, 16, GxEPD_BLACK);
+  }else if(v >= 30){
+    display.drawBitmap(x, y, ui_battery_icon_levels[3], 16, 16, GxEPD_BLACK);
+  }else if(v >= 20){
+    display.drawBitmap(x, y, ui_battery_icon_levels[2], 16, 16, GxEPD_BLACK);
+  }else if(v >= 10){
+    display.drawBitmap(x, y, ui_battery_icon_levels[1], 16, 16, GxEPD_RED);
+  }else{
+    display.drawBitmap(x, y, ui_battery_icon_levels[0], 16, 16, GxEPD_RED);
+  }
+}
+
+// Calculate the estimate battery percentage level
+float estimateBattPerc(float voltage) {
+  const float voltageTable[] = {4.20, 4.10, 4.00, 3.90, 3.80, 3.70, 3.60, 3.50, 3.40, 3.30, 3.20, 3.00};
+  const int percentTable[]   = {100,  90,   80,   70,   60,   50,   40,   30,   20,   10,   5,    0};
+  if (voltage >= voltageTable[0]) return 100;
+  if (voltage <= voltageTable[11]) return 0;
+  for (int i = 0; i < 11; i++) {
+    if (voltage > voltageTable[i+1]) {
+      float v1 = voltageTable[i];
+      float v2 = voltageTable[i+1];
+      int p1 = percentTable[i];
+      int p2 = percentTable[i+1];
+      return p1 + ((voltage - v1) * (p2 - p1)) / (v2 - v1);
+    }
+  }
+  return 0;
+}
+
 // Render the entire UI on the screen
 void renderInfo(){
   // Get Open Weather Map data
@@ -440,16 +493,30 @@ void renderInfo(){
   String temp_sensor_bedroom = fetchSensorData(sensor3_temp, false);
   String humidity_sensor_bedroom = fetchSensorData(sensor3_h, false);
 
+  //Battery level
+  float correctionFactor = 0.87354368932038;
+  int batt_raw = analogRead(BATTERY_LEVEL_PIN);
+  float voltage = (batt_raw / 4095.0) * 3.3 * 2.0 * correctionFactor;
+  float batt_perc =  estimateBattPerc(voltage);
+  
   // Prepare display for rendering
   display.setRotation(1);
   display.setFullWindow();
   display.firstPage();
   display.setTextColor(GxEPD_BLACK);
-
+  
   //Renders each part of the ui on the screen
   do {
     display.fillScreen(GxEPD_WHITE);
-    
+
+    // Draw battery icon
+    drawBatteryIcon(batt_perc, 216, 42);
+  
+    // Draw battery level
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(232, 56);
+    display.print(String(batt_perc, 0) + " %");
+
     // Wind Information
     display.drawBitmap(24, 66, directionIcons[heading_index], 16, 16, GxEPD_RED);
     display.drawBitmap(5, 66, ui_wind_icon, 16, 16, GxEPD_BLACK);
@@ -493,28 +560,28 @@ void renderInfo(){
     
     // Min and Max temperature information
     display.setFont(&FreeSans9pt7b);
-    display.drawBitmap(216, 5, ui_up_arrow, 16, 16, GxEPD_RED);
-    display.setCursor(232, 18);
+    display.drawBitmap(216, 4, ui_up_arrow, 16, 16, GxEPD_RED);
+    display.setCursor(232, 17);
     display.setTextColor(GxEPD_RED);
     display.print(weather_status_temp_max);
-    display.drawBitmap(216, 21, ui_down_arrow, 16, 16, GxEPD_BLACK);
-    display.setCursor(232, 34);
+    display.drawBitmap(216, 20, ui_down_arrow, 16, 16, GxEPD_BLACK);
+    display.setCursor(232, 33);
     display.setTextColor(GxEPD_BLACK);
     display.print(weather_status_temp_min);
     
     if(!weather_status_temp_max.equals("N/A") && !weather_status_temp_min.equals("N/A")){
       if (owUnits.equals("imperial")) {
-        display.drawBitmap(272, 5, ui_farenheit_icon, 16, 16, GxEPD_RED);
-        display.drawBitmap(272, 22, ui_farenheit_icon, 16, 16, GxEPD_BLACK);
+        display.drawBitmap(272, 4, ui_farenheit_icon, 16, 16, GxEPD_RED);
+        display.drawBitmap(272, 21, ui_farenheit_icon, 16, 16, GxEPD_BLACK);
       }else{
         if (owUnits.equals("metric")) {
-          display.drawBitmap(272, 5, ui_celsius_icon, 16, 16, GxEPD_RED);
-          display.drawBitmap(272, 22, ui_celsius_icon, 16, 16, GxEPD_BLACK);
+          display.drawBitmap(272, 4, ui_celsius_icon, 16, 16, GxEPD_RED);
+          display.drawBitmap(272, 21, ui_celsius_icon, 16, 16, GxEPD_BLACK);
         }else{
-          display.setCursor(280, 17);
+          display.setCursor(280, 16);
           display.setTextColor(GxEPD_RED);
           display.print("K");
-          display.setCursor(280, 34);
+          display.setCursor(280, 33);
           display.setTextColor(GxEPD_BLACK);
           display.print("K");
         }
@@ -635,6 +702,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
   pinMode(RESET_PIN, INPUT_PULLUP);
+  analogReadResolution(12);
 
   esp_sleep_wakeup_cause_t wakeupReason = esp_sleep_get_wakeup_cause();
   Serial.printf("Wake reason: %d\n", wakeupReason);
