@@ -1,6 +1,6 @@
 # Weather E-Ink Dash 🌤️
 <p align="center">
-  <img height="300" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_1.jpg">
+  <img width="100%" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_1.jpg">
 </p>
 
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -17,5 +17,8 @@ To use the Home Assistant temperature sensors integration, you must have a maxim
 To use the battery level information on the project, an additional circuit needs to be added to your current setup. Following the image below, you need to attach a voltage divider circuit to the battery and connect its midpoint to an ADC pin on the ESP32. In the base code, the used pin is PIN 0, but this can change depending on your specific ESP32 board.
 
 <p align="center">
-  <img height="300" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_2.png">
+  <img width="100%" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_2.png">
+</p>
+<p align="center">
+  <img width="100%" src="https://raw.githubusercontent.com/matheus-paula/weather-e-ink-dash/refs/heads/main/images/example_3.jpg">
 </p>
