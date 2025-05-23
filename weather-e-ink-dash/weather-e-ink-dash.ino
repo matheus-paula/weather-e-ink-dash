@@ -53,10 +53,10 @@
 
 //#define USE_MOCK_API //uncomment to use a temporary mock api to avoid hit usage limit during testing
 #define OW_MOCK_API "api-mock.json" // mock api
-#define OW_BASE_API_URL "https://api.openweathermap.org/data/2.5/weather"
+#define OW_BASE_API_URL "https://api.openweathermap.org/data/2.5/forecast"
 
 // Deep Sleep configuration
-#define RUNS_PER_DAY 800
+#define RUNS_PER_DAY 500
 #define SECONDS_IN_DAY 86400
 #define SLEEP_INTERVAL_SEC (SECONDS_IN_DAY / RUNS_PER_DAY)
 #define RESET_PIN 21
@@ -71,7 +71,7 @@ const char* AP_SSID = "ESP32-WeatherDash";
 const char* AP_PASSWORD = "connectweatherdash";
 
 // Status Led GPIO
-#define STATUS_LED 8
+#define STATUS_LED 9
 
 // ESP-32-S3-Zero board
 // Display Serial interface
@@ -455,24 +455,24 @@ float estimateBattPerc(float voltage) {
 void renderInfo(){
   // Get Open Weather Map data
   DynamicJsonDocument doc = fetchOpenWeatherData();
-  float temp = doc["main"]["temp"] | NAN;
-  float temp_max = doc["main"]["temp_max"] | NAN;
-  float temp_min = doc["main"]["temp_min"] | NAN;
-  String weather_status_desc = doc["weather"][0]["description"] | "N/A";
-  String weather_status_ico = doc["weather"][0]["icon"] | "N/A";
+  float temp = doc["list"][0]["main"]["temp"] | NAN;
+  float temp_max = doc["list"][0]["main"]["temp_max"] | NAN;
+  float temp_min = doc["list"][0]["main"]["temp_min"] | NAN;
+  String weather_status_desc = doc["list"][0]["weather"][0]["description"] | "N/A";
+  String weather_status_ico = doc["list"][0]["weather"][0]["icon"] | "N/A";
   String weather_status_temp = isnan(temp) ? "N/A" : String(temp, 1);
   String weather_status_temp_max = isnan(temp_max) ? "N/A" : String(temp_max, 1);
   String weather_status_temp_min = isnan(temp_min) ? "N/A" : String(temp_min, 1);
-  String weather_status_pressure = doc["main"]["pressure"] | "N/A";
-  String weather_status_humidity = doc["main"]["humidity"] | "N/A";
+  String weather_status_pressure = doc["list"][0]["main"]["pressure"] | "N/A";
+  String weather_status_humidity = doc["list"][0]["main"]["humidity"] | "N/A";
   
   // Handle timestamp
-  time_t weather_status_timestamp = doc["dt"];
+  time_t weather_status_timestamp = doc["list"][0]["dt"];
   String timestamp = formatUnixTimestamp(weather_status_timestamp);
 
   // Handle wind info
-  float weather_status_headingdeg = doc["wind"]["deg"];
-  String weather_status_windspd = doc["wind"]["speed"];
+  float weather_status_headingdeg = doc["list"][0]["wind"]["deg"];
+  String weather_status_windspd = doc["list"][0]["wind"]["speed"];
   int angle = ((int)round(weather_status_headingdeg)) % 360;
   int heading_index = ((angle + 22) / 45) % 8;
   const unsigned char* directionIcons[8] = {
@@ -689,7 +689,6 @@ void managePreferences(){
 }
 
 void blinkLED(int times, int speed) {
-  pinMode(STATUS_LED, OUTPUT);
   for (int i = 0; i < times; i++) {
     digitalWrite(STATUS_LED, HIGH);
     delay(speed);
@@ -701,6 +700,7 @@ void blinkLED(int times, int speed) {
 void setup() {
   Serial.begin(115200);
   while (!Serial);
+  pinMode(STATUS_LED, OUTPUT);
   pinMode(RESET_PIN, INPUT_PULLUP);
   analogReadResolution(12);
 
