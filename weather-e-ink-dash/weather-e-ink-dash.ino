@@ -56,7 +56,7 @@
 #define OW_BASE_API_URL "https://api.openweathermap.org/data/2.5/forecast"
 
 // Deep Sleep configuration
-#define RUNS_PER_DAY 500
+#define RUNS_PER_DAY 144
 #define SECONDS_IN_DAY 86400
 #define SLEEP_INTERVAL_SEC (SECONDS_IN_DAY / RUNS_PER_DAY)
 #define RESET_PIN 21
@@ -498,7 +498,10 @@ void renderInfo(){
   String humidity_sensor_bedroom = fetchSensorData(sensor3_h, false);
 
   //Battery level
-  float correctionFactor = 0.87354368932038;
+  //Should be calibrated to match the acurracy of your ESP's ADC
+  //Just divide the true measured value by the value of the 
+  //calculated percentage and set here
+  float correctionFactor = 1.234;
   int batt_raw = analogRead(BATTERY_LEVEL_PIN);
   float voltage = (batt_raw / 4095.0) * 3.3 * 2.0 * correctionFactor;
   float batt_perc =  estimateBattPerc(voltage);
@@ -516,10 +519,15 @@ void renderInfo(){
     // Draw battery icon
     drawBatteryIcon(batt_perc, 216, 42);
   
+    Serial.println(voltage);
+    Serial.println(batt_raw);
+    Serial.println(batt_perc);
+    
     // Draw battery level
     display.setFont(&FreeSans9pt7b);
     display.setCursor(232, 56);
     display.print(String(batt_perc, 0) + " %");
+    //display.print(String(voltage, 2) + " v");
 
     // Wind Information
     display.drawBitmap(24, 66, directionIcons[heading_index], 16, 16, GxEPD_RED);
