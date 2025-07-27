@@ -71,9 +71,9 @@ const char* AP_SSID = "ESP32-WeatherDash";
 const char* AP_PASSWORD = "connectweatherdash";
 
 // Status Led GPIO
-#define STATUS_LED 9
+#define STATUS_LED 15
 
-// ESP-32-S3-Zero board
+// ESP-32-c6 Super Mini  board
 // Display Serial interface
 #define SCK 4
 #define MISO -1
@@ -260,6 +260,10 @@ String fetchSensorData(String sensor, bool showUnit) {
     }
     http.end();
     
+    if(doc["state"] == "unavailable"){
+      return "N/A";
+    }
+
     return doc["state"] | "N/A";
 
   } else {
@@ -590,8 +594,8 @@ void renderInfo(){
 
     // Render each Home Assistant sensor information on the screen with given coordinates
     displaySensorData(ui_home_icon, 4, 96, temp_sensor_ext, humidity_sensor_ext);
-    displaySensorData(ui_bedroom_icon, 106, 96, temp_sensor_bedroom, humidity_sensor_livingroom);
-    displaySensorData(ui_livingroom_icon, 202, 96, temp_sensor_livingroom, humidity_sensor_bedroom);
+    displaySensorData(ui_bedroom_icon, 106, 96, temp_sensor_bedroom, humidity_sensor_bedroom);
+    displaySensorData(ui_livingroom_icon, 202, 96, temp_sensor_livingroom, humidity_sensor_livingroom);
     
   } while (display.nextPage());
   Serial.println("All screen information rendered");
@@ -747,7 +751,7 @@ void setup() {
       blinkLED(2, 40);
       managePreferences();
     } else {
-      String resetMessage = getResetMessage("You're not connected to a valid network!", String(AP_SSID), String(AP_PASSWORD));
+      String resetMessage = getResetMessage("Please, connect to the AP to configure a network!", String(AP_SSID), String(AP_PASSWORD));
       String wifiStr = "WIFI:T:WPA;S:"+ String(AP_SSID) +";P:" + String(AP_PASSWORD) + ";;";
       showFullScrMessage(resetMessage, wifiStr);
       Serial.println(resetMessage);
@@ -765,7 +769,13 @@ void setup() {
 
   //Only shows on the actual display the connection info on the first boot
   if (wakeupReason == 0) {
-    showFullScrMessage(wifiConnectedInfo,"");
+    if (WiFi.status() != WL_CONNECTED) {
+      String resetMessage = getResetMessage("Please, connect to the AP to configure a network!", String(AP_SSID), String(AP_PASSWORD));
+      String wifiStr = "WIFI:T:WPA;S:"+ String(AP_SSID) +";P:" + String(AP_PASSWORD) + ";;";
+      showFullScrMessage(resetMessage, wifiStr);
+    }else{
+      showFullScrMessage(wifiConnectedInfo,"");
+    }
   }
 
   renderInfo();
