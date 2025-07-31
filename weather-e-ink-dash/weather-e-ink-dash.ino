@@ -88,6 +88,8 @@ const char* AP_PASSWORD = "connectweatherdash";
 // This code is epecifically design to work on a 182x296px epaper module from WeAct Studio
 GxEPD2_3C<GxEPD2_290_C90c, GxEPD2_290_C90c::HEIGHT> display(GxEPD2_290_C90c(CS, DC, RES, BUSY)); 
 
+bool wasConnectedBefore = false;
+
 /** Preferences */
 Preferences preferences;
 String owUnits = "metric";
@@ -709,6 +711,20 @@ void blinkLED(int times, int speed) {
   }
 }
 
+void goto_deep_sleep() {
+  display.hibernate();
+  delay(100);
+  display.powerOff();
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  btStop();
+  vTaskDelay(10);
+  esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_SEC * 1000000ULL);
+  Serial.println("Going to sleep now...");
+  Serial.flush();
+  esp_deep_sleep_start();
+}
+
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -734,11 +750,15 @@ void setup() {
   SPI.begin(SCK, MISO, MOSI, CS);
   display.init(115200, true, 50, false);
 
+  preferences.begin("wifi", false);
+  bool wasConnectedBefore = preferences.getBool("wifi_success", false);
+
   // Handle Wi-Fi reset
   if (triggerReset) {
     String resetMessage = getResetMessage("Wi-Fi credentials and settings have been reset!", String(AP_SSID), String(AP_PASSWORD));
-    String wifiStr = "WIFI:T:WPA;S:"+ String(AP_SSID) +";P:" + String(AP_PASSWORD) + ";;";
+    String wifiStr = "WIFI:T:WPA;S:" + String(AP_SSID) + ";P:" + String(AP_PASSWORD) + ";;";
     clearPreferences();
+    preferences.putBool("wifi_success", false);
     WiFiManager wifiManager;
     wifiManager.resetSettings();
     Serial.println(resetMessage);
@@ -750,67 +770,71 @@ void setup() {
 
   // Start Wi-Fi connection
   if (WiFi.status() != WL_CONNECTED) {
-    WiFiManager wifiManager;
-    wifiManager.autoConnect(AP_SSID, AP_PASSWORD);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();
 
-    int signalStrength = WiFi.RSSI();
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 3) {
+      delay(1000);
+      Serial.print(".");
+      attempts++;
+    }
+
     if (WiFi.status() == WL_CONNECTED) {
-      // Blink Status led to confirm a sucessful connection
+      Serial.println("\nConnected after retry.");
+      preferences.putBool("wifi_success", true);
       blinkLED(2, 40);
       managePreferences();
     } else {
+      Serial.println("\nConnection failed.");
+
+      if (wasConnectedBefore) {
+        Serial.println("Previously connected. Skipping AP mode and going to sleep.");
+        blinkLED(5, 200);
+        goto_deep_sleep();
+        return;
+      }
+
+      // First-time setup or after reset: fallback to AP mode
       String resetMessage = getResetMessage("Please, connect to the AP to configure a network!", String(AP_SSID), String(AP_PASSWORD));
-      String wifiStr = "WIFI:T:WPA;S:"+ String(AP_SSID) +";P:" + String(AP_PASSWORD) + ";;";
+      String wifiStr = "WIFI:T:WPA;S:" + String(AP_SSID) + ";P:" + String(AP_PASSWORD) + ";;";
       showFullScrMessage(resetMessage, wifiStr);
       Serial.println(resetMessage);
       blinkLED(3, 500);
-      wifiManager.autoConnect(AP_SSID, AP_PASSWORD);
+
+      WiFiManager wifiManager;
+      if (wifiManager.autoConnect(AP_SSID, AP_PASSWORD)) {
+        preferences.putBool("wifi_success", true);
+      } else {
+        Serial.println("WiFiManager failed. Going to sleep.");
+        goto_deep_sleep();
+        return;
+      }
     }
   } else {
-    // Blink Status led to confirm a sucessful connection
-    blinkLED(2, 40);
+    blinkLED(2, 40);  // Already connected
   }
 
   // Print connection info
-  String wifiConnectedInfo = "\nWi-fi connected!\n\nIP: " + WiFi.localIP().toString() + "\n\nSSID: " + WiFi.SSID() + "\n\nSignal: " + String(WiFi.RSSI()) + "dBm";
+  String wifiConnectedInfo = "\nWi-fi connected!\n\nIP: " + WiFi.localIP().toString() +
+                             "\n\nSSID: " + WiFi.SSID() + "\n\nSignal: " + String(WiFi.RSSI()) + "dBm";
   Serial.println(wifiConnectedInfo);
 
-  //Only shows on the actual display the connection info on the first boot
   if (wakeupReason == 0) {
     if (WiFi.status() != WL_CONNECTED) {
       String resetMessage = getResetMessage("Please, connect to the AP to configure a network!", String(AP_SSID), String(AP_PASSWORD));
-      String wifiStr = "WIFI:T:WPA;S:"+ String(AP_SSID) +";P:" + String(AP_PASSWORD) + ";;";
+      String wifiStr = "WIFI:T:WPA;S:" + String(AP_SSID) + ";P:" + String(AP_PASSWORD) + ";;";
       showFullScrMessage(resetMessage, wifiStr);
-    }else{
-      showFullScrMessage(wifiConnectedInfo,"");
+    } else {
+      showFullScrMessage(wifiConnectedInfo, "");
     }
   }
 
   renderInfo();
 
-/*  char taskList[512];
-  vTaskList(taskList);
-  Serial.println(taskList);
-*/
-
   wakeCount++;
 
-  display.hibernate();
-  delay(100);
-  display.powerOff();
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
-  btStop();
-  
-  vTaskDelay(10);
-
-  // Configure sleep
-  esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_SEC * 1000000ULL);
-  Serial.println("Going to sleep now...");
-  Serial.flush();
-
-  // Enter deep sleep
-  esp_deep_sleep_start();
+  goto_deep_sleep();
 }
 
 void loop() {
