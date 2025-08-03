@@ -184,18 +184,24 @@ String removeDiacritics(const String& input) {
 // Get Timezone String information to use on the format function
 String getTZString() {
   const char* gmt = tmz.c_str();
+  if (tmz.length() < 5) return "UTC0"; // Safety check for malformed input
+
   char sign = gmt[0];
-  int hour = atoi(&gmt[1]);
-  int minute = atoi(&gmt[4]);
+  int hour = (gmt[1] - '0') * 10 + (gmt[2] - '0');
+  int minute = (gmt[3] - '0') * 10 + (gmt[4] - '0');
+
   int totalOffset = hour * 60 + minute;
-  int offset = (sign == '-') ? totalOffset : -totalOffset;
+  int offset = (sign == '-') ? -totalOffset : totalOffset;
+
   int h = abs(offset) / 60;
   int m = abs(offset) % 60;
+
   char tz[16];
   if (m == 0)
     sprintf(tz, "UTC%+d", offset / 60);
   else
     sprintf(tz, "UTC%+d:%02d", offset / 60, m);
+
   return String(tz);
 }
 
@@ -439,22 +445,21 @@ void drawBatteryIcon(float v, int x, int y){
   }
 }
 
-// Calculate the estimate battery percentage level
 float estimateBattPerc(float voltage) {
-  const float voltageTable[] = {4.20, 4.10, 4.00, 3.90, 3.80, 3.70, 3.60, 3.50, 3.40, 3.30, 3.20, 3.00};
-  const int percentTable[]   = {100,  90,   80,   70,   60,   50,   40,   30,   20,   10,   5,    0};
-  if (voltage >= voltageTable[0]) return 100;
-  if (voltage <= voltageTable[11]) return 0;
-  for (int i = 0; i < 11; i++) {
-    if (voltage > voltageTable[i+1]) {
-      float v1 = voltageTable[i];
-      float v2 = voltageTable[i+1];
-      int p1 = percentTable[i];
-      int p2 = percentTable[i+1];
-      return p1 + ((voltage - v1) * (p2 - p1)) / (v2 - v1);
-    }
-  }
-  return 0;
+  if (voltage >= 4.2f) return 100.0f;
+  if (voltage <= 3.0f) return 0.0f;
+
+  float x = (voltage - 3.0f) / 1.2f;
+
+  // More accurate fit (based on real-world 18650 data)
+  float perc = -3.5f * x * x * x * x
+               + 14.0f * x * x * x
+               - 20.8f * x * x
+               + 110.0f * x;
+
+  if (perc > 100.0f) return 100.0f;
+  if (perc < 0.0f) return 0.0f;
+  return perc;
 }
 
 // Render the entire UI on the screen
