@@ -283,7 +283,11 @@ String fetchSensorData(String sensor, bool showUnit) {
       return "N/A";
     }
 
-    return doc["state"] | "N/A";
+    float val = doc["state"].as<float>();
+    char buffer[16];
+    dtostrf(val, 0, 1, buffer);
+
+    return String(buffer);
 
   } else {
     Serial.println("Error on HTTP request: " + String(httpCode));
@@ -506,15 +510,15 @@ void renderInfo(){
   // Sensor 1
   String temp_sensor_ext = fetchSensorData(sensor1_temp, false);  
   String humidity_sensor_ext = fetchSensorData(sensor1_h, false);  
-  
-  // Sensor 2
-  String temp_sensor_livingroom = fetchSensorData(sensor2_temp, false);
-  String humidity_sensor_livingroom = fetchSensorData(sensor2_h, false);
-  
-  // Sensor 3
-  String temp_sensor_bedroom = fetchSensorData(sensor3_temp, false);
-  String humidity_sensor_bedroom = fetchSensorData(sensor3_h, false);
 
+  // Sensor 2
+  String temp_sensor_bedroom = fetchSensorData(sensor2_temp, false);
+  String humidity_sensor_bedroom = fetchSensorData(sensor2_h, false);
+
+  // Sensor 3
+  String temp_sensor_livingroom = fetchSensorData(sensor3_temp, false);
+  String humidity_sensor_livingroom = fetchSensorData(sensor3_h, false);
+    
   //Battery level
   //Should be calibrated to match the acurracy of your ESP's ADC
   //Just divide the true measured value by the value of the 
