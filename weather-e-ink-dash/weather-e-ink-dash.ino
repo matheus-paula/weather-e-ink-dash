@@ -183,42 +183,53 @@ String removeDiacritics(const String& input) {
 
 // Get Timezone String information to use on the format function
 String getTZString() {
-  const char* gmt = tmz.c_str();
-  if (tmz.length() < 5) return "UTC0"; // Safety check for malformed input
+  if (tmz.length() < 3) return "UTC0";
 
-  char sign = gmt[0];
-  int hour = (gmt[1] - '0') * 10 + (gmt[2] - '0');
-  int minute = (gmt[3] - '0') * 10 + (gmt[4] - '0');
+  String t = tmz;
+  t.replace(":", "");
+  if (t.length() < 5) return "UTC0";
 
-  int totalOffset = hour * 60 + minute;
-  int offset = (sign == '-') ? -totalOffset : totalOffset;
+  int sign = (t[0] == '-') ? -1 : 1;
+  int h = (t[1] - '0') * 10 + (t[2] - '0');
+  int m = (t[3] - '0') * 10 + (t[4] - '0');
 
-  int h = abs(offset) / 60;
-  int m = abs(offset) % 60;
+  int totalOffset = sign * (h * 60 + m);
+  int posixOffset = -totalOffset;
 
-  char tz[16];
-  if (m == 0)
-    sprintf(tz, "UTC%+d", offset / 60);
+  int ah = abs(posixOffset) / 60;
+  int am = abs(posixOffset) % 60;
+
+  char tz[20];
+  if (am == 0)
+    sprintf(tz, "UTC%+d", (posixOffset >= 0 ? ah : -ah));
   else
-    sprintf(tz, "UTC%+d:%02d", offset / 60, m);
+    sprintf(tz, "UTC%+d:%02d", (posixOffset >= 0 ? ah : -ah), am);
 
   return String(tz);
 }
 
 // Format the given unix timestamp data accordingly
 String formatUnixTimestamp(time_t timestamp) {
+  static String lastTZ;
   String tz = getTZString();
-  setenv("TZ", tz.c_str(), 1);
-  tzset();
+  if (tz != lastTZ) {
+    setenv("TZ", tz.c_str(), 1);
+    tzset();
+    lastTZ = tz;
+  }
+
   struct tm *timeinfo = localtime(&timestamp);
   const char* hourFormat = owHourMode.equals("12") ? "%I:%M %p" : "%H:%M";
   const char* dateFormat = owUnits.equals("imperial") ? "%m/%d/%Y" : "%d/%m/%Y";
+
   char formatStr[40];
   snprintf(formatStr, sizeof(formatStr), "%s - %s", hourFormat, dateFormat);
+
   char buffer[40];
   strftime(buffer, sizeof(buffer), formatStr, timeinfo);
   return String(buffer);
 }
+
 
 // Display a full screen message with a option to show a QR code aside
 void showFullScrMessage(String message, String qrCodeStr) {
@@ -625,6 +636,7 @@ void loadPreferences() {
   haToken = preferences.getString("ha_token", "");
   haAddress = preferences.getString("ha_address", "");
   tmz = preferences.getString("tmz", "-03:00");
+  owHourMode = preferences.getString("hour_mode", "24"); 
   sensor1_temp = preferences.getString("sensor1_temp", "");
   sensor1_h = preferences.getString("sensor1_h", "");
   sensor2_temp = preferences.getString("sensor2_temp", "");
@@ -760,17 +772,13 @@ void setup() {
 
   // Handle Wi-Fi reset
   if (triggerReset) {
-    String resetMessage = getResetMessage("Wi-Fi credentials and settings have been reset!", String(AP_SSID), String(AP_PASSWORD));
-    String wifiStr = "WIFI:T:WPA;S:" + String(AP_SSID) + ";P:" + String(AP_PASSWORD) + ";;";
     clearPreferences();
     preferences.putBool("wifi_success", false);
     WiFiManager wifiManager;
     wifiManager.resetSettings();
-    Serial.println(resetMessage);
     blinkLED(3, 500);
-    showFullScrMessage(resetMessage, wifiStr);
-    triggerReset = false;
-    delay(100);
+    showFullScrMessage("Wi-Fi credentials and settings have been reset!", "");
+    ESP.restart();
   }
 
   // Start Wi-Fi connection
@@ -810,6 +818,7 @@ void setup() {
       WiFiManager wifiManager;
       if (wifiManager.autoConnect(AP_SSID, AP_PASSWORD)) {
         preferences.putBool("wifi_success", true);
+        managePreferences();
       } else {
         Serial.println("WiFiManager failed. Going to sleep.");
         goto_deep_sleep();
